@@ -12,35 +12,32 @@
 #include <sys/fcntl.h>
 #include "md5.h"
 using namespace std;
- char concat_str[20]; 
 //This function will be calld as a reaction to catching a signal.
-void checkMD5( int pid)
+char concat_str[20]; 
+int str_len=2;
+  
+void catchSigT(int sig_num)
  {
-    int length =strlen(concat_str);
-    length=2;
-    if (length<32)
-    {
-        printf("the md5 doesnt work");
-        kill(0, pid);
+  str_len=strlen(concat_str);
+    if(str_len==32){
+       printf("encrypted by process %d: %s\n",getpid(),concat_str);
+       kill(0,SIGKILL);
+       exit(0);
+    }
+    else{
         exit(1);
     }
-    else
-    {
-        printf("%s\n", concat_str);
-        exit(0);
-    }
- };
+ }
 
 int main() 
 { 
     // We use two pipes 
     // First pipe to send input string from parent 
     // Second pipe to send concatenated string from child 
-    string  md5Ans;
+  string  md5Ans;
     int fd1[2];  // Used to store two ends of first pipe 
     int fd2[2];  // Used to store two ends of second pipe 
-  
-    char fixed_str[] = "forgeeks.org"; 
+
     char input_str[20]; 
     pid_t p; 
   
@@ -54,13 +51,7 @@ int main()
         fprintf(stderr, "Pipe Failed" ); 
         return 1; 
     } 
-    puts ("Please enter a string of 20 characters or fewer.");
-    scanf("%s", input_str); 
-    while(strlen(input_str)>20)
-    {
-    puts ("Please enter a string of 20 characters or fewer.");
-    scanf("%s", input_str); 
-    }
+    
     p = fork(); 
   
     if (p < 0) 
@@ -72,6 +63,14 @@ int main()
     // Parent process 
     else if (p > 0) 
     { 
+        puts ("Please enter a string of 20 characters or fewer.");
+    scanf("%s", input_str); 
+    while(strlen(input_str)>20)
+    {
+    puts ("Please enter a string of 20 characters or fewer.");
+    scanf("%s", input_str); 
+    }
+  
         close(fd1[0]);  // Close reading end of first pipe 
   
         // Write input string and close writing end of first 
@@ -87,18 +86,22 @@ int main()
   
         // Read string from child, print it and close 
         // reading end. 
-        sleep(2);
-        read(fd2[0], concat_str, 100);
-        close(fd2[0]);  
-        checkMD5(SIGINT);   
+        read(fd2[0], concat_str, 100); 
+       str_len=strlen(concat_str);
+
+      kill(p,SIGINT);
+      catchSigT(SIGINT);
+        close(fd2[0]); 
+         exit(0);
     } 
+  
     // child process 
     else
     { 
         close(fd1[1]);  // Close writing end of first pipe 
-
+  
         // Read a string using first pipe 
-       
+        char concat_str[20]; 
         read(fd1[0], concat_str, 20); 
   
        // Close both reading ends 
@@ -112,6 +115,7 @@ int main()
         strcpy(newChar,md5Ans.c_str());
         write(fd2[1],newChar,strlen(newChar)+1); 
         close(fd2[1]); 
+  
         exit(0); 
     } 
 }
